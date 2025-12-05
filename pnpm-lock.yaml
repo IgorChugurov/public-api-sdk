@@ -9,13 +9,13 @@ importers:
   .:
     dependencies:
       '@supabase/ssr':
-        specifier: ^0.7.0
+        specifier: ^0.7.0 || ^0.8.0
         version: 0.7.0(@supabase/supabase-js@2.86.2)
       '@supabase/supabase-js':
         specifier: ^2.81.1
         version: 2.86.2
       next:
-        specifier: ^14.0.0 || ^15.0.0
+        specifier: ^14.0.0 || ^15.0.0 || ^16.0.0
         version: 15.5.7(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
     devDependencies:
       '@semantic-release/changelog':
