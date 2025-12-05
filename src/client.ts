@@ -21,10 +21,12 @@ import {
   transformEntityInstance,
   flattenInstance,
 } from "./utils/instance-utils";
+import { validateSlug } from "./utils/slug";
 import {
   SDKError,
   NotFoundError,
   PermissionDeniedError,
+  ValidationError,
   handleSupabaseError,
   handleInstanceError,
   AuthenticationError,
@@ -300,6 +302,244 @@ export class PublicAPIClient extends BasePublicAPIClient {
       if (
         error instanceof NotFoundError ||
         error instanceof PermissionDeniedError ||
+        error instanceof SDKError
+      ) {
+        throw error;
+      }
+
+      // Для остальных ошибок используем общую обработку
+      handleSupabaseError(error);
+    }
+  }
+
+  /**
+   * Получить один экземпляр по slug
+   */
+  async getInstanceBySlug(
+    entityDefinitionId: string,
+    slug: string,
+    params?: { relationsAsIds?: boolean }
+  ): Promise<EntityInstanceWithFields> {
+    try {
+      // 1. Валидируем формат slug
+      if (!validateSlug(slug)) {
+        throw new ValidationError(
+          "slug",
+          "Slug must contain only lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen"
+        );
+      }
+
+      // 2. Получаем fields из кэша SDK
+      const fields = await this.getFields(entityDefinitionId);
+
+      // 3. Получаем instance по slug (используем this.supabase)
+      const { data: instance, error: instanceError } = (await this.supabase
+        .from("entity_instance")
+        .select("*")
+        .eq("slug", slug)
+        .eq("entity_definition_id", entityDefinitionId)
+        .eq("project_id", this.projectId)
+        .single()) as {
+        data: {
+          id: string;
+          slug: string;
+          entity_definition_id: string;
+          project_id: string;
+          data: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        } | null;
+        error: any;
+      };
+
+      if (instanceError || !instance) {
+        // Обрабатываем ошибки получения instance
+        handleInstanceError(
+          instanceError || new Error("Instance not found"),
+          slug
+        );
+      }
+
+      // Трансформируем экземпляр
+      const transformedInstance = transformEntityInstance(instance);
+
+      // Проверяем принадлежность к entityDefinitionId
+      if (transformedInstance.entityDefinitionId !== entityDefinitionId) {
+        throw new NotFoundError("Entity instance", slug);
+      }
+
+      // 4. Определяем все relation fields
+      const relationFields = fields.filter(
+        (f) =>
+          f.dbType === "manyToMany" ||
+          f.dbType === "manyToOne" ||
+          f.dbType === "oneToMany" ||
+          f.dbType === "oneToOne"
+      );
+
+      // 5. Загружаем все relations одним batch-запросом (используем this.supabase)
+      const relations: Record<string, EntityInstanceWithFields[]> = {};
+      if (relationFields.length > 0) {
+        const relationFieldIds = relationFields
+          .map((f) => f.id)
+          .filter((id): id is string => Boolean(id));
+
+        if (relationFieldIds.length > 0) {
+          // Batch-запрос: получаем все relations для всех полей одним запросом
+          const { data: allRelations, error: relationsError } =
+            (await this.supabase
+              .from("entity_relation")
+              .select("target_instance_id, relation_field_id")
+              .eq("source_instance_id", transformedInstance.id)
+              .in("relation_field_id", relationFieldIds)) as {
+              data: Array<{
+                target_instance_id: string;
+                relation_field_id: string;
+              }> | null;
+              error: any;
+            };
+
+          if (relationsError) {
+            // Пробрасываем ошибку загрузки relations для отладки
+            throw new SDKError(
+              "RELATIONS_LOAD_ERROR",
+              `Failed to load relations for instance with slug ${slug}: ${relationsError.message}`,
+              500,
+              relationsError
+            );
+          }
+
+          if (allRelations && allRelations.length > 0) {
+            // Получаем все уникальные target_instance_id
+            const targetInstanceIds = [
+              ...new Set(allRelations.map((r) => r.target_instance_id)),
+            ];
+
+            // Загружаем все связанные экземпляры одним запросом
+            const { data: relatedInstances, error: instancesError } =
+              (await this.supabase
+                .from("entity_instance")
+                .select("*")
+                .in("id", targetInstanceIds)) as {
+                data: Array<{
+                  id: string;
+                  entity_definition_id: string;
+                  project_id: string;
+                  data: Record<string, unknown>;
+                  created_at: string;
+                  updated_at: string;
+                }> | null;
+                error: any;
+              };
+
+            if (instancesError) {
+              // Пробрасываем ошибку загрузки связанных instances для отладки
+              throw new SDKError(
+                "RELATED_INSTANCES_LOAD_ERROR",
+                `Failed to load related instances for instance with slug ${slug}: ${instancesError.message}`,
+                500,
+                instancesError
+              );
+            }
+
+            if (relatedInstances) {
+              // Создаем карту связанных экземпляров
+              const relatedInstancesMap = new Map(
+                relatedInstances.map((inst) => [
+                  inst.id,
+                  transformEntityInstance(inst),
+                ])
+              );
+
+              // Группируем relations по полям
+              for (const relation of allRelations) {
+                const relationField = relationFields.find(
+                  (f) => f.id === relation.relation_field_id
+                );
+                if (relationField) {
+                  const relatedInstance = relatedInstancesMap.get(
+                    relation.target_instance_id
+                  );
+                  if (relatedInstance) {
+                    if (!relations[relationField.name]) {
+                      relations[relationField.name] = [];
+                    }
+                    relations[relationField.name].push(
+                      relatedInstance as unknown as EntityInstanceWithFields
+                    );
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 6. Загружаем файлы одним batch-запросом (используем this.supabase)
+      const fileFields = fields.filter(
+        (f) => f.type === "files" || f.type === "images"
+      );
+
+      if (fileFields.length > 0) {
+        const { data: allFiles, error: filesError } = (await this.supabase
+          .from("entity_file")
+          .select("id, field_id")
+          .eq("entity_instance_id", transformedInstance.id)) as {
+          data: Array<{ id: string; field_id: string | null }> | null;
+          error: any;
+        };
+
+        if (filesError) {
+          // Пробрасываем ошибку загрузки файлов для отладки
+          throw new SDKError(
+            "FILES_LOAD_ERROR",
+            `Failed to load files for instance with slug ${slug}: ${filesError.message}`,
+            500,
+            filesError
+          );
+        }
+
+        if (allFiles) {
+          // Группируем файлы по field_id
+          const filesByFieldId = new Map<string, string[]>();
+          allFiles.forEach((file) => {
+            if (file.field_id) {
+              if (!filesByFieldId.has(file.field_id)) {
+                filesByFieldId.set(file.field_id, []);
+              }
+              filesByFieldId.get(file.field_id)!.push(file.id);
+            }
+          });
+
+          // Подставляем массивы ID файлов в data для каждого поля
+          fileFields.forEach((field) => {
+            const fileIds = filesByFieldId.get(field.id) || [];
+            if (fileIds.length > 0 || !transformedInstance.data[field.name]) {
+              transformedInstance.data[field.name] = fileIds;
+            }
+          });
+        }
+      }
+
+      // 7. Создаем объект с relations для уплощения
+      const instanceWithRelations = {
+        ...transformedInstance,
+        relations: Object.keys(relations).length > 0 ? relations : undefined,
+      };
+
+      // 8. Уплощаем экземпляр используя утилиту из SDK
+      return flattenInstance(
+        instanceWithRelations,
+        fields.map((f) => ({ name: f.name, dbType: f.dbType })),
+        params?.relationsAsIds ?? false
+      );
+    } catch (error: any) {
+      // Если ошибка уже является SDKError (NotFoundError, PermissionDeniedError и т.д.)
+      // просто пробрасываем её дальше
+      if (
+        error instanceof NotFoundError ||
+        error instanceof PermissionDeniedError ||
+        error instanceof ValidationError ||
         error instanceof SDKError
       ) {
         throw error;

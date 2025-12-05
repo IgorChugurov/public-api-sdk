@@ -152,13 +152,47 @@ const { data, pagination } = await sdk.getInstances(entityDefinitionId, {
 
 #### `getInstance(entityDefinitionId, id, params?)`
 
-Получить один экземпляр.
+Получить один экземпляр по ID.
 
 ```typescript
 const instance = await sdk.getInstance(entityDefinitionId, id, {
   relationsAsIds?: boolean; // default: false
 });
 ```
+
+**Пример:**
+
+```typescript
+const instance = await sdk.getInstance("entity-def-id", "instance-id", {
+  relationsAsIds: true, // для редактирования - нужны только ID
+});
+```
+
+#### `getInstanceBySlug(entityDefinitionId, slug, params?)`
+
+Получить один экземпляр по slug.
+
+```typescript
+const instance = await sdk.getInstanceBySlug(entityDefinitionId, slug, {
+  relationsAsIds?: boolean; // default: false
+});
+```
+
+**Пример:**
+
+```typescript
+const instance = await sdk.getInstanceBySlug("entity-def-id", "my-article-slug", {
+  relationsAsIds: false, // для отображения - нужны полные объекты
+});
+```
+
+**Особенности:**
+- Валидирует формат slug перед запросом (только строчные латинские буквы, цифры и дефисы)
+- Работает аналогично `getInstance`, но ищет по slug вместо id
+- Поддерживает те же параметры, что и `getInstance` (relationsAsIds)
+- Параметр `relationsAsIds`:
+  - `false` (по умолчанию) - возвращает полные объекты связанных сущностей
+  - `true` - возвращает только массивы ID связанных сущностей
 
 #### `createInstance(entityDefinitionId, data)`
 

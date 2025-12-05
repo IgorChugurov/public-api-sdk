@@ -444,6 +444,12 @@ export abstract class BasePublicAPIClient {
     params?: { relationsAsIds?: boolean }
   ): Promise<EntityInstanceWithFields>;
 
+  abstract getInstanceBySlug(
+    entityDefinitionId: string,
+    slug: string,
+    params?: { relationsAsIds?: boolean }
+  ): Promise<EntityInstanceWithFields>;
+
   abstract createInstance(
     entityDefinitionId: string,
     data: CreateInstanceData

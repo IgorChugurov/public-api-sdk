@@ -24,6 +24,27 @@ export function generateSlug(name: string): string {
 }
 
 /**
+ * Валидирует формат slug
+ * Slug должен содержать только строчные латинские буквы, цифры и дефисы
+ * Не должен начинаться или заканчиваться дефисом
+ * Максимальная длина 100 символов
+ */
+export function validateSlug(slug: string): boolean {
+  if (!slug || typeof slug !== "string") {
+    return false;
+  }
+
+  // Проверяем длину
+  if (slug.length === 0 || slug.length > 100) {
+    return false;
+  }
+
+  // Проверяем формат: только строчные латинские буквы, цифры и дефисы
+  const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  return slugRegex.test(slug);
+}
+
+/**
  * Генерирует случайный суффикс из 4 символов (буквы и цифры)
  */
 function generateRandomSuffix(): string {
