@@ -10,6 +10,7 @@ import type { EntityInstanceWithFields } from "../types/entity-types";
  */
 export function transformEntityInstance(row: any): {
   id: string;
+  slug: string;
   entityDefinitionId: string;
   projectId: string;
   data: Record<string, unknown>;
@@ -18,6 +19,7 @@ export function transformEntityInstance(row: any): {
 } {
   return {
     id: row.id,
+    slug: row.slug,
     entityDefinitionId: row.entity_definition_id,
     projectId: row.project_id,
     data: row.data || {},
@@ -32,6 +34,7 @@ export function transformEntityInstance(row: any): {
 export function flattenInstance(
   instance: {
     id: string;
+    slug: string;
     entityDefinitionId: string;
     projectId: string;
     data: Record<string, unknown>;
@@ -44,6 +47,7 @@ export function flattenInstance(
 ): EntityInstanceWithFields {
   const result: Record<string, unknown> = {
     id: instance.id,
+    slug: instance.slug,
     entityDefinitionId: instance.entityDefinitionId,
     projectId: instance.projectId,
     createdAt: instance.createdAt,

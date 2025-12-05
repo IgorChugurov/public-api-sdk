@@ -90,6 +90,7 @@ export abstract class BasePublicAPIClient {
     return {
       id: row.id,
       name: row.name,
+      slug: row.slug,
       description: row.description,
       tableName: row.table_name,
       type: row.type,
@@ -245,6 +246,55 @@ export abstract class BasePublicAPIClient {
   }
 
   /**
+   * Получить все EntityDefinitions проекта с полями одним запросом (JOIN)
+   * Используется для загрузки всех сущностей в layout
+   *
+   * @returns Массив EntityDefinitionConfig с полями
+   */
+  async getAllEntityDefinitions(): Promise<EntityDefinitionConfig[]> {
+    // Загружаем все entityDefinitions с полями одним запросом через JOIN
+    const { data, error } = (await this.supabase
+      .from("entity_definition")
+      .select(
+        `
+        *,
+        field!field_entity_definition_id_fkey (*)
+      `
+      )
+      .eq("project_id", this.projectId)
+      .order("name")) as {
+      data: any[] | null;
+      error: any;
+    };
+
+    if (error) {
+      throw new Error(`Failed to load entity definitions: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Преобразуем каждую entityDefinition с полями
+    return data.map((row) => {
+      const entityDefinition = this.transformEntityDefinitionFromDB(row);
+      const fields = (row.field || []).map((fieldRow: any) =>
+        this.transformFieldFromDB(fieldRow)
+      );
+
+      // Сортируем поля по display_index
+      fields.sort(
+        (a: FieldConfig, b: FieldConfig) => a.displayIndex - b.displayIndex
+      );
+
+      return {
+        ...entityDefinition,
+        fields,
+      };
+    });
+  }
+
+  /**
    * Преобразование EntityDefinitionConfig в EntityDefinition
    */
   private convertToEntityDefinition(
@@ -253,6 +303,7 @@ export abstract class BasePublicAPIClient {
     return {
       id: config.id,
       name: config.name,
+      slug: config.slug,
       description: config.description,
       tableName: config.tableName,
       type: config.type,

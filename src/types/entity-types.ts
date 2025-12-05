@@ -12,6 +12,7 @@ import type { PartialUIConfig } from "./ui-config-types";
 export interface EntityDefinition {
   id: string;
   name: string;
+  slug: string;
   description?: string | null;
   tableName: string;
   type: "primary" | "secondary" | "tertiary";
@@ -220,6 +221,7 @@ export interface EntityInstance<
   TData extends Record<string, FieldValue> = Record<string, FieldValue>
 > {
   id: string;
+  slug: string;
   entityDefinitionId: string;
   projectId: string;
 
@@ -265,6 +267,7 @@ export type EntityInstanceWithFields<
   TFields extends Record<string, FieldValue> = Record<string, FieldValue>
 > = {
   id: string;
+  slug: string;
   entityDefinitionId: string;
   projectId: string;
   createdAt: string;

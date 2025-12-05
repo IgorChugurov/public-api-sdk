@@ -898,12 +898,40 @@ export class PublicAPIClient extends BasePublicAPIClient {
       // 3. Разделяем data и relations из CreateInstanceData
       const { data: instanceData, relations } = data;
 
-      // 4. Создаем экземпляр
+      // 4. Генерируем уникальный slug из поля name
+      const name = instanceData.name;
+      if (!name || typeof name !== "string") {
+        throw new Error(
+          "Field 'name' is required and must be a string for slug generation"
+        );
+      }
+
+      // Импортируем утилиты для генерации slug из SDK
+      const {
+        generateUniqueSlugForInstance,
+      } = await import("./utils/slug");
+
+      const slug = await generateUniqueSlugForInstance(
+        name,
+        entityDefinitionId,
+        async (slugToCheck, entityDefIdToCheck) => {
+          const { data: existing } = await this.supabase
+            .from("entity_instance")
+            .select("id")
+            .eq("entity_definition_id", entityDefIdToCheck)
+            .eq("slug", slugToCheck)
+            .single();
+          return !!existing;
+        }
+      );
+
+      // 5. Создаем экземпляр
       const { data: instance, error: instanceError } = (await this.supabase
         .from("entity_instance")
         .insert({
           entity_definition_id: entityDefinitionId,
           project_id: this.projectId,
+          slug: slug,
           data: instanceData,
           created_by: user?.id || null,
         } as never)
@@ -911,6 +939,7 @@ export class PublicAPIClient extends BasePublicAPIClient {
         .single()) as {
         data: {
           id: string;
+          slug: string;
           entity_definition_id: string;
           project_id: string;
           data: Record<string, unknown>;
@@ -929,7 +958,7 @@ export class PublicAPIClient extends BasePublicAPIClient {
 
       const transformedInstance = transformEntityInstance(instance);
 
-      // 5. Создаем связи если есть
+      // 6. Создаем связи если есть
       if (relations && Object.keys(relations).length > 0) {
         // Определяем relation поля
         const relationFields = fields.filter(

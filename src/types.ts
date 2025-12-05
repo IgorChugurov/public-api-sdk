@@ -30,6 +30,7 @@ export interface ProjectConfig {
 export interface EntityDefinitionConfig {
   id: string;
   name: string;
+  slug: string;
   description?: string | null;
   tableName: string;
   type: "primary" | "secondary" | "tertiary";
