@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/IgorChugurov/public-api-sdk/compare/v1.1.0...v1.2.0) (2025-12-05)
+
+
+### Features
+
+* add getInstanceBySlug method to retrieve instances by slug ([66f6bd9](https://github.com/IgorChugurov/public-api-sdk/commit/66f6bd94416ac49d2b7eb0644a58b116861ea9c7))
+
 # [1.1.0](https://github.com/IgorChugurov/public-api-sdk/compare/v1.0.0...v1.1.0) (2025-12-05)
 
 
