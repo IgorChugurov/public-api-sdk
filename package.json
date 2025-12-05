@@ -1,6 +1,6 @@
 {
   "name": "@igorchugurov/public-api-sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Public API SDK for Axon Dashboard - reusable SDK for working with universal entities",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
