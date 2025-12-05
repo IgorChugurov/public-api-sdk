@@ -3,7 +3,7 @@
  * Копии функций из instance-client-service для изоляции SDK
  */
 
-import type { EntityInstanceWithFields } from "../types/entity-types";
+import type { EntityInstanceWithFields, EntityFile } from "../types/entity-types";
 
 /**
  * Преобразование данных из БД в типы TypeScript
@@ -80,4 +80,24 @@ export function flattenInstance(
   }
 
   return result as EntityInstanceWithFields;
+}
+
+/**
+ * Преобразует данные файла из БД в EntityFile
+ */
+export function transformEntityFile(row: any): EntityFile {
+  return {
+    id: row.id,
+    entityInstanceId: row.entity_instance_id,
+    fieldId: row.field_id,
+    fileUrl: row.file_url,
+    filePath: row.file_path,
+    fileName: row.file_name,
+    fileSize: row.file_size,
+    fileType: row.file_type,
+    storageBucket: row.storage_bucket,
+    uploadedBy: row.uploaded_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }

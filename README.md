@@ -157,14 +157,25 @@ const { data, pagination } = await sdk.getInstances(entityDefinitionId, {
 ```typescript
 const instance = await sdk.getInstance(entityDefinitionId, id, {
   relationsAsIds?: boolean; // default: false
+  loadFiles?: boolean; // default: false
 });
 ```
 
 **Пример:**
 
 ```typescript
+// Базовое использование - без файлов
+const instance = await sdk.getInstance("entity-def-id", "instance-id");
+
+// Для редактирования - нужны только ID связей
 const instance = await sdk.getInstance("entity-def-id", "instance-id", {
-  relationsAsIds: true, // для редактирования - нужны только ID
+  relationsAsIds: true,
+});
+
+// Для отображения с файлами - полные объекты
+const instance = await sdk.getInstance("entity-def-id", "instance-id", {
+  relationsAsIds: false,
+  loadFiles: true, // файлы и изображения будут загружены как полные объекты EntityFile
 });
 ```
 
@@ -175,24 +186,33 @@ const instance = await sdk.getInstance("entity-def-id", "instance-id", {
 ```typescript
 const instance = await sdk.getInstanceBySlug(entityDefinitionId, slug, {
   relationsAsIds?: boolean; // default: false
+  loadFiles?: boolean; // default: false
 });
 ```
 
 **Пример:**
 
 ```typescript
+// Базовое использование - без файлов
+const instance = await sdk.getInstanceBySlug("entity-def-id", "my-article-slug");
+
+// Для отображения с файлами - полные объекты
 const instance = await sdk.getInstanceBySlug("entity-def-id", "my-article-slug", {
-  relationsAsIds: false, // для отображения - нужны полные объекты
+  relationsAsIds: false,
+  loadFiles: true, // файлы и изображения будут загружены как полные объекты EntityFile
 });
 ```
 
 **Особенности:**
 - Валидирует формат slug перед запросом (только строчные латинские буквы, цифры и дефисы)
 - Работает аналогично `getInstance`, но ищет по slug вместо id
-- Поддерживает те же параметры, что и `getInstance` (relationsAsIds)
+- Поддерживает те же параметры, что и `getInstance`
 - Параметр `relationsAsIds`:
   - `false` (по умолчанию) - возвращает полные объекты связанных сущностей
   - `true` - возвращает только массивы ID связанных сущностей
+- Параметр `loadFiles`:
+  - `false` (по умолчанию) - файлы и изображения не загружаются
+  - `true` - файлы и изображения загружаются как полные объекты `EntityFile` (с `fileUrl`, `fileName`, `fileSize` и т.д.)
 
 #### `createInstance(entityDefinitionId, data)`
 
@@ -355,4 +375,5 @@ pnpm dev
 ## 📄 Лицензия
 
 MIT
+
 

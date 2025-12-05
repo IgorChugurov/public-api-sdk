@@ -232,15 +232,26 @@ const { data, pagination } = await sdk.getInstances("entity-def-id", {
 
 ```typescript
 const instance = await sdk.getInstance(entityDefinitionId, instanceId, {
-  relationsAsIds: boolean, // связи как ID или объекты (default: false)
+  relationsAsIds?: boolean, // связи как ID или объекты (default: false)
+  loadFiles?: boolean, // загружать файлы и изображения как полные объекты EntityFile (default: false)
 });
 ```
 
 **Пример:**
 
 ```typescript
+// Базовое использование - без файлов
+const instance = await sdk.getInstance("entity-def-id", "instance-id");
+
+// Для редактирования - нужны только ID связей
 const instance = await sdk.getInstance("entity-def-id", "instance-id", {
-  relationsAsIds: true, // для редактирования - нужны только ID
+  relationsAsIds: true,
+});
+
+// Для отображения с файлами - полные объекты
+const instance = await sdk.getInstance("entity-def-id", "instance-id", {
+  relationsAsIds: false,
+  loadFiles: true, // файлы и изображения будут загружены как полные объекты EntityFile
 });
 ```
 
@@ -248,15 +259,21 @@ const instance = await sdk.getInstance("entity-def-id", "instance-id", {
 
 ```typescript
 const instance = await sdk.getInstanceBySlug(entityDefinitionId, slug, {
-  relationsAsIds: boolean, // связи как ID или объекты (default: false)
+  relationsAsIds?: boolean, // связи как ID или объекты (default: false)
+  loadFiles?: boolean, // загружать файлы и изображения как полные объекты EntityFile (default: false)
 });
 ```
 
 **Пример:**
 
 ```typescript
+// Базовое использование - без файлов
+const instance = await sdk.getInstanceBySlug("entity-def-id", "my-article-slug");
+
+// Для отображения с файлами - полные объекты
 const instance = await sdk.getInstanceBySlug("entity-def-id", "my-article-slug", {
-  relationsAsIds: false, // для отображения - нужны полные объекты
+  relationsAsIds: false,
+  loadFiles: true, // файлы и изображения будут загружены как полные объекты EntityFile
 });
 ```
 
@@ -264,6 +281,7 @@ const instance = await sdk.getInstanceBySlug("entity-def-id", "my-article-slug",
 - Валидирует формат slug перед запросом (только строчные латинские буквы, цифры и дефисы)
 - Работает аналогично `getInstance`, но ищет по slug вместо id
 - Поддерживает те же параметры, что и `getInstance`
+- `loadFiles: true` - загружает файлы и изображения как полные объекты `EntityFile` вместо массивов ID
 
 #### Создать экземпляр
 

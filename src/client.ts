@@ -20,7 +20,10 @@ import type { EntityInstanceWithFields } from "./types/entity-types";
 import {
   transformEntityInstance,
   flattenInstance,
+  transformEntityFile,
 } from "./utils/instance-utils";
+import type { EntityFile } from "./types/entity-types";
+import type { FieldConfig } from "./types";
 import { validateSlug } from "./utils/slug";
 import {
   SDKError,
@@ -85,12 +88,82 @@ export class PublicAPIClient extends BasePublicAPIClient {
   }
 
   /**
+   * Загружает файлы для экземпляра и возвращает их как полные объекты EntityFile,
+   * сгруппированные по именам полей
+   */
+  private async loadFilesForInstance(
+    instanceId: string,
+    fileFields: FieldConfig[]
+  ): Promise<Map<string, EntityFile[]>> {
+    if (fileFields.length === 0) {
+      return new Map();
+    }
+
+    // Загружаем все файлы для экземпляра одним запросом
+    const { data: allFiles, error: filesError } = (await this.supabase
+      .from("entity_file")
+      .select("*")
+      .eq("entity_instance_id", instanceId)) as {
+      data: Array<{
+        id: string;
+        entity_instance_id: string;
+        field_id: string | null;
+        file_url: string;
+        file_path: string;
+        file_name: string;
+        file_size: number;
+        file_type: string;
+        storage_bucket: string;
+        uploaded_by: string | null;
+        created_at: string;
+        updated_at: string;
+      }> | null;
+      error: any;
+    };
+
+    if (filesError) {
+      throw new SDKError(
+        "FILES_LOAD_ERROR",
+        `Failed to load files for instance ${instanceId}: ${filesError.message}`,
+        500,
+        filesError
+      );
+    }
+
+    if (!allFiles || allFiles.length === 0) {
+      return new Map();
+    }
+
+    // Преобразуем файлы в EntityFile и группируем по именам полей
+    const filesMap = new Map<string, EntityFile[]>();
+    const fieldIdToName = new Map(
+      fileFields.map((f) => [f.id, f.name])
+    );
+
+    allFiles.forEach((fileRow) => {
+      if (!fileRow.field_id) return;
+
+      const fieldName = fieldIdToName.get(fileRow.field_id);
+      if (!fieldName) return;
+
+      const entityFile = transformEntityFile(fileRow);
+
+      if (!filesMap.has(fieldName)) {
+        filesMap.set(fieldName, []);
+      }
+      filesMap.get(fieldName)!.push(entityFile);
+    });
+
+    return filesMap;
+  }
+
+  /**
    * Получить один экземпляр
    */
   async getInstance(
     entityDefinitionId: string,
     id: string,
-    params?: { relationsAsIds?: boolean }
+    params?: { relationsAsIds?: boolean; loadFiles?: boolean }
   ): Promise<EntityInstanceWithFields> {
     try {
       // 1. Получаем fields из кэша SDK
@@ -238,48 +311,21 @@ export class PublicAPIClient extends BasePublicAPIClient {
         }
       }
 
-      // 5. Загружаем файлы одним batch-запросом (используем this.supabase)
-      const fileFields = fields.filter(
-        (f) => f.type === "files" || f.type === "images"
-      );
+      // 5. Загружаем файлы одним batch-запросом как полные объекты EntityFile (только если loadFiles = true)
+      if (params?.loadFiles === true) {
+        const fileFields = fields.filter(
+          (f) => f.type === "files" || f.type === "images"
+        );
 
-      if (fileFields.length > 0) {
-        const { data: allFiles, error: filesError } = (await this.supabase
-          .from("entity_file")
-          .select("id, field_id")
-          .eq("entity_instance_id", id)) as {
-          data: Array<{ id: string; field_id: string | null }> | null;
-          error: any;
-        };
+        if (fileFields.length > 0) {
+          const filesMap = await this.loadFilesForInstance(id, fileFields);
 
-        if (filesError) {
-          // Пробрасываем ошибку загрузки файлов для отладки
-          throw new SDKError(
-            "FILES_LOAD_ERROR",
-            `Failed to load files for instance ${id}: ${filesError.message}`,
-            500,
-            filesError
-          );
-        }
-
-        if (allFiles) {
-          // Группируем файлы по field_id
-          const filesByFieldId = new Map<string, string[]>();
-          allFiles.forEach((file) => {
-            if (file.field_id) {
-              if (!filesByFieldId.has(file.field_id)) {
-                filesByFieldId.set(file.field_id, []);
-              }
-              filesByFieldId.get(file.field_id)!.push(file.id);
-            }
-          });
-
-          // Подставляем массивы ID файлов в data для каждого поля
+          // Подставляем массивы EntityFile в data для каждого поля
           fileFields.forEach((field) => {
-            const fileIds = filesByFieldId.get(field.id) || [];
-            if (fileIds.length > 0 || !transformedInstance.data[field.name]) {
-              transformedInstance.data[field.name] = fileIds;
-            }
+            const files = filesMap.get(field.name) || [];
+            // Всегда устанавливаем значение, даже если массив пустой
+            // Это позволяет клиенту знать, что поле существует
+            transformedInstance.data[field.name] = files;
           });
         }
       }
@@ -318,7 +364,7 @@ export class PublicAPIClient extends BasePublicAPIClient {
   async getInstanceBySlug(
     entityDefinitionId: string,
     slug: string,
-    params?: { relationsAsIds?: boolean }
+    params?: { relationsAsIds?: boolean; loadFiles?: boolean }
   ): Promise<EntityInstanceWithFields> {
     try {
       // 1. Валидируем формат slug
@@ -475,48 +521,24 @@ export class PublicAPIClient extends BasePublicAPIClient {
         }
       }
 
-      // 6. Загружаем файлы одним batch-запросом (используем this.supabase)
-      const fileFields = fields.filter(
-        (f) => f.type === "files" || f.type === "images"
-      );
+      // 6. Загружаем файлы одним batch-запросом как полные объекты EntityFile (только если loadFiles = true)
+      if (params?.loadFiles === true) {
+        const fileFields = fields.filter(
+          (f) => f.type === "files" || f.type === "images"
+        );
 
-      if (fileFields.length > 0) {
-        const { data: allFiles, error: filesError } = (await this.supabase
-          .from("entity_file")
-          .select("id, field_id")
-          .eq("entity_instance_id", transformedInstance.id)) as {
-          data: Array<{ id: string; field_id: string | null }> | null;
-          error: any;
-        };
-
-        if (filesError) {
-          // Пробрасываем ошибку загрузки файлов для отладки
-          throw new SDKError(
-            "FILES_LOAD_ERROR",
-            `Failed to load files for instance with slug ${slug}: ${filesError.message}`,
-            500,
-            filesError
+        if (fileFields.length > 0) {
+          const filesMap = await this.loadFilesForInstance(
+            transformedInstance.id,
+            fileFields
           );
-        }
 
-        if (allFiles) {
-          // Группируем файлы по field_id
-          const filesByFieldId = new Map<string, string[]>();
-          allFiles.forEach((file) => {
-            if (file.field_id) {
-              if (!filesByFieldId.has(file.field_id)) {
-                filesByFieldId.set(file.field_id, []);
-              }
-              filesByFieldId.get(file.field_id)!.push(file.id);
-            }
-          });
-
-          // Подставляем массивы ID файлов в data для каждого поля
+          // Подставляем массивы EntityFile в data для каждого поля
           fileFields.forEach((field) => {
-            const fileIds = filesByFieldId.get(field.id) || [];
-            if (fileIds.length > 0 || !transformedInstance.data[field.name]) {
-              transformedInstance.data[field.name] = fileIds;
-            }
+            const files = filesMap.get(field.name) || [];
+            // Всегда устанавливаем значение, даже если массив пустой
+            // Это позволяет клиенту знать, что поле существует
+            transformedInstance.data[field.name] = files;
           });
         }
       }
