@@ -1,0 +1,65 @@
+{
+  "name": "@igorchugurov/public-api-sdk",
+  "version": "0.1.0",
+  "description": "Public API SDK for Axon Dashboard - reusable SDK for working with universal entities",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "semantic-release": "semantic-release"
+  },
+  "peerDependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.81.1",
+    "next": "^14.0.0 || ^15.0.0"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.2",
+    "@semantic-release/npm": "^13.1.2",
+    "@semantic-release/release-notes-generator": "^14.1.0",
+    "@types/node": "^20",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
+    "semantic-release": "^25.0.2",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "sdk",
+    "api",
+    "supabase",
+    "nextjs",
+    "entities"
+  ],
+  "license": "MIT",
+  "author": "Igor Chugurov",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IgorChugurov/public-api-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/IgorChugurov/public-api-sdk/issues"
+  },
+  "homepage": "https://github.com/IgorChugurov/public-api-sdk#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}
+
