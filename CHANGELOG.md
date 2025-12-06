@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/IgorChugurov/public-api-sdk/compare/v1.3.0...v1.4.0) (2025-12-06)
+
+
+### Features
+
+* add relationFieldRequired, relationFieldRequiredText and exclude fields to Field interface ([3b5f87d](https://github.com/IgorChugurov/public-api-sdk/commit/3b5f87d6789890639be6091761ad08ccf6a5c62f))
+
 # [1.3.0](https://github.com/IgorChugurov/public-api-sdk/compare/v1.2.0...v1.3.0) (2025-12-05)
 
 ### Bug Fixes
