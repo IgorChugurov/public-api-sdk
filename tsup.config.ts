@@ -10,12 +10,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: [
-    "next",
-    "@supabase/ssr",
-    "@supabase/supabase-js",
-  ],
+  external: ["next", "@supabase/ssr", "@supabase/supabase-js"],
   treeshake: true,
 });
-
-

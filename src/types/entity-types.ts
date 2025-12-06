@@ -143,6 +143,8 @@ export interface Field {
   // Информация о связанном поле (для отображения при редактировании)
   relationFieldName?: string | null; // Имя связанного поля
   relationFieldLabel?: string | null; // Лейбл связанного поля
+  relationFieldRequired?: boolean; // Обязательность связанного поля
+  relationFieldRequiredText?: string | null; // Текст ошибки для обязательного связанного поля
 
   // Значения по умолчанию
   defaultStringValue?: string | null;
@@ -164,6 +166,9 @@ export interface Field {
   // Dynamic value field configuration (for type: "dynamicValue")
   typeFieldName?: string | null; // Name of the field that determines the input type (default: "type")
   optionsFieldName?: string | null; // Name of the field that contains options for select type (default: "options")
+
+  // Additional field configuration
+  exclude?: string | null; // Entity ID to exclude from options (e.g., "parentEntityId" for relatedEntityDefinitionId)
 
   // File upload configuration (for type: "files" or "images")
   acceptFileTypes?: string | null; // "image/*", "application/pdf", etc.

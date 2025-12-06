@@ -43,5 +43,3 @@
   ],
   "generateNotes": "@semantic-release/release-notes-generator"
 }
-
-
